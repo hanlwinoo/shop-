@@ -1,0 +1,24 @@
+/* Custom Utility Helpers */
+
+/* Hide scrollbars for dynamic menu categories */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+/* Modal Smooth Animations */
+#checkout-modal > div {
+    animation: slideUp 0.25s ease-out forwards;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
