@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+
+    <!-- Passcode Modal Overlay -->
+    <div id="auth-modal" class="fixed inset-0 bg-gray-900 bg-opacity-95 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full text-center">
+            <h2 class="text-xl font-bold mb-4 text-emerald-600">Admin Login</h2>
+            <input type="password" id="passcode-input" placeholder="Enter PIN Passcode" class="w-full text-center text-2xl tracking-widest border p-3 rounded-xl mb-4 focus:outline-emerald-600">
+            <button onclick="checkPasscode()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700">Access Dashboard</button>
+        </div>
+    </div>
+
+    <!-- Main Navigation Header -->
+    <header class="bg-emerald-700 text-white p-4 shadow-md flex justify-between items-center">
+        <h1 class="text-xl font-bold">Golden Bite — Management Panel</h1>
+        <div class="space-x-2">
+            <button onclick="switchTab('orders')" class="px-3 py-1.5 bg-emerald-800 rounded-lg text-sm font-semibold hover:bg-emerald-600">Live Orders</button>
+            <button onclick="switchTab('menu')" class="px-3 py-1.5 bg-emerald-800 rounded-lg text-sm font-semibold hover:bg-emerald-600">Manage Menu</button>
+            <button onclick="switchTab('settings')" class="px-3 py-1.5 bg-emerald-800 rounded-lg text-sm font-semibold hover:bg-emerald-600">Settings & QR</button>
+        </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto p-6">
+        <!-- 1. LIVE ORDERS VIEW -->
+        <section id="tab-orders">
+            <h2 class="text-xl font-bold mb-4 flex items-center justify-between">
+                <span>Kitchen Monitor (Live)</span>
+                <span id="order-count" class="text-sm bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">0 Orders</span>
+            </h2>
+            <div id="orders-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <p class="text-gray-400">Listening for orders...</p>
+            </div>
+        </section>
+
+        <!-- 2. MANAGE MENU VIEW -->
+        <section id="tab-menu" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Menu & Price Controls</h2>
+                <button onclick="openAddMenuModal()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-emerald-700">+ Add New Item</button>
+            </div>
+            <div id="admin-menu-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Dynamic Menu Cards -->
+            </div>
+        </section>
+
+        <!-- 3. SETTINGS & QR VIEW -->
+        <section id="tab-settings" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Payment Account Configuration -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm">
+                <h3 class="text-lg font-bold mb-4 text-emerald-600">Payment Accounts Settings</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase">KBZ Pay Phone / ID</label>
+                        <input type="text" id="cfg-kbz" class="w-full border p-2 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase">AYA Pay Phone / ID</label>
+                        <input type="text" id="cfg-aya" class="w-full border p-2 rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase">Wave Pay Phone / ID</label>
+                        <input type="text" id="cfg-wave" class="w-full border p-2 rounded-lg text-sm">
+                    </div>
+                    <button onclick="savePaymentSettings()" class="w-full bg-emerald-600 text-white font-bold py-2 rounded-lg text-sm hover:bg-emerald-700">Save Payment Numbers</button>
+                </div>
+            </div>
+
+            <!-- Table QR Code Generator -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm text-center">
+                <h3 class="text-lg font-bold mb-4 text-emerald-600">Generate Table QR Code</h3>
+                <input type="number" id="qr-table-num" placeholder="Enter Table Number (e.g. 5)" class="border p-2 rounded-lg w-full mb-3 text-center">
+                <button onclick="generateQR()" class="bg-emerald-600 text-white font-bold py-2 px-4 rounded-lg w-full text-sm mb-4">Generate QR Code</button>
+                <div id="qrcode-container" class="flex justify-center my-2"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Add/Edit Menu Modal -->
+    <div id="menu-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+            <h3 class="text-lg font-bold mb-4" id="menu-modal-title">Add Menu Item</h3>
+            <input type="hidden" id="edit-item-id">
+            <div class="space-y-3">
+                <input type="text" id="item-name-en" placeholder="Item Name (English)" class="w-full border p-2 rounded-lg text-sm">
+                <input type="text" id="item-name-mm" placeholder="Item Name (Myanmar)" class="w-full border p-2 rounded-lg text-sm">
+                <input type="number" id="item-price" placeholder="Price (MMK)" class="w-full border p-2 rounded-lg text-sm">
+                <select id="item-category" class="w-full border p-2 rounded-lg text-sm bg-white">
+                    <option value="mains">Main Menu / ပင်မဟင်းလျာ</option>
+                    <option value="drinks">Drinks / အအေး</option>
+                    <option value="desserts">Desserts / အချိုပွဲ</option>
+                </select>
+                <input type="text" id="item-image" placeholder="Image URL (e.g. https://...)" class="w-full border p-2 rounded-lg text-sm">
+            </div>
+            <div class="flex space-x-2 mt-6">
+                <button onclick="closeMenuModal()" class="w-1/2 border border-gray-300 py-2 rounded-lg text-sm font-semibold">Cancel</button>
+                <button onclick="saveMenuItem()" class="w-1/2 bg-emerald-600 text-white py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700">Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrEqMktrCHe31lzEjL3OnGISENiTV9n20",
+            authDomain: "shop-1-fdc21.firebaseapp.com",
+            projectId: "shop-1-fdc21",
+            storageBucket: "shop-1-fdc21.firebasestorage.app",
+            messagingSenderId: "26440829499",
+            appId: "1:26440829499:web:0359e74c163aebfae9ea1e",
+            measurementId: "G-C3FKL0GWLP"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        const ADMIN_PASSCODE = "1234"; // Set your admin passcode here
+
+        function checkPasscode() {
+            const val = document.getElementById('passcode-input').value;
+            if(val === ADMIN_PASSCODE) {
+                document.getElementById('auth-modal').classList.add('hidden');
+                initAdmin();
+            } else {
+                alert("Incorrect PIN Passcode!");
+            }
+        }
+
+        function initAdmin() {
+            listenToOrders();
+            listenToMenu();
+            loadPaymentSettings();
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tab-orders').classList.add('hidden');
+            document.getElementById('tab-menu').classList.add('hidden');
+            document.getElementById('tab-settings').classList.add('hidden');
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+        }
+
+        // --- 1. ORDERS MONITOR ---
+        function listenToOrders() {
+            db.collection("orders").orderBy("created_at", "desc").onSnapshot(snapshot => {
+                const container = document.getElementById('orders-grid');
+                container.innerHTML = '';
+                document.getElementById('order-count').innerText = `${snapshot.size} Total Orders`;
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const itemsText = data.items ? data.items.map(i => `• ${i.name_en} (${Number(i.price).toLocaleString()} MMK)`).join('<br>') : '';
+                    const isPaid = data.payment_status === 'paid';
+
+                    container.innerHTML += `
+                        <div class="bg-white p-5 rounded-2xl shadow-sm border-l-4 ${isPaid ? 'border-emerald-500' : 'border-amber-500'} relative">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Table</span>
+                                    <h3 class="text-2xl font-black text-gray-800">${data.table_number || '--'}</h3>
+                                </div>
+                                <span class="px-2.5 py-1 text-xs rounded-full font-bold uppercase ${data.order_type === 'takeaway' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">
+                                    ${data.order_type || 'Dine-In'}
+                                </span>
+                            </div>
+
+                            <div class="text-xs text-gray-600 mb-4 bg-gray-50 p-3 rounded-lg border">
+                                ${itemsText}
+                            </div>
+
+                            <div class="flex justify-between items-center text-xs pt-2 border-t">
+                                <div>
+                                    <p class="font-semibold uppercase">${data.payment_method}</p>
+                                    <p class="font-bold text-sm text-emerald-600">${Number(data.total_amount).toLocaleString()} MMK</p>
+                                </div>
+                                <span class="px-2 py-1 rounded font-bold uppercase ${isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                    ${data.payment_status}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // --- 2. MENU MANAGEMENT ---
+        function listenToMenu() {
+            db.collection("menu").onSnapshot(snapshot => {
+                const container = document.getElementById('admin-menu-list');
+                container.innerHTML = '';
+
+                snapshot.forEach(doc => {
+                    const item = doc.data();
+                    const isAvailable = item.is_available !== false;
+
+                    container.innerHTML += `
+                        <div class="bg-white p-4 rounded-xl shadow-sm border flex items-center justify-between">
+                            <img src="${item.image_url || 'https://via.placeholder.com/80'}" class="w-16 h-16 object-cover rounded-lg">
+                            <div class="flex-1 ml-3">
+                                <h4 class="font-bold text-sm">${item.name_en} / ${item.name_mm}</h4>
+                                <p class="text-xs text-emerald-600 font-bold">${Number(item.price).toLocaleString()} MMK</p>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="toggleAvailability('${doc.id}', ${!isAvailable})" class="px-3 py-1 text-xs font-bold rounded-lg ${isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                                    ${isAvailable ? 'IN STOCK' : 'SOLD OUT'}
+                                </button>
+                                <button onclick="deleteMenuItem('${doc.id}')" class="text-gray-400 hover:text-red-500 font-bold px-2">&times;</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function toggleAvailability(id, newStatus) {
+            db.collection("menu").doc(id).update({ is_available: newStatus });
+        }
+
+        function openAddMenuModal() {
+            document.getElementById('menu-modal-title').innerText = "Add Menu Item";
+            document.getElementById('edit-item-id').value = "";
+            document.getElementById('item-name-en').value = "";
+            document.getElementById('item-name-mm').value = "";
+            document.getElementById('item-price').value = "";
+            document.getElementById('item-image').value = "";
+            document.getElementById('menu-modal').classList.remove('hidden');
+        }
+
+        function closeMenuModal() {
+            document.getElementById('menu-modal').classList.add('hidden');
+        }
+
+        function saveMenuItem() {
+            const data = {
+                name_en: document.getElementById('item-name-en').value,
+                name_mm: document.getElementById('item-name-mm').value,
+                price: Number(document.getElementById('item-price').value),
+                category: document.getElementById('item-category').value,
+                image_url: document.getElementById('item-image').value,
+                is_available: true
+            };
+
+            db.collection("menu").add(data).then(() => {
+                closeMenuModal();
+            });
+        }
+
+        function deleteMenuItem(id) {
+            if(confirm("Are you sure you want to delete this menu item?")) {
+                db.collection("menu").doc(id).delete();
+            }
+        }
+
+        // --- 3. SETTINGS & QR GENERATOR ---
+        function loadPaymentSettings() {
+            db.collection("settings").doc("payments").get().then(doc => {
+                if(doc.exists) {
+                    const data = doc.data();
+                    document.getElementById('cfg-kbz').value = data.kbz || '';
+                    document.getElementById('cfg-aya').value = data.aya || '';
+                    document.getElementById('cfg-wave').value = data.wave || '';
+                }
+            });
+        }
+
+        function savePaymentSettings() {
+            db.collection("settings").doc("payments").set({
+                kbz: document.getElementById('cfg-kbz').value,
+                aya: document.getElementById('cfg-aya').value,
+                wave: document.getElementById('cfg-wave').value
+            }).then(() => alert("Payment settings updated successfully!"));
+        }
+
+        function generateQR() {
+            const tableNum = document.getElementById('qr-table-num').value;
+            const container = document.getElementById('qrcode-container');
+            if(!tableNum) return alert("Please enter a table number");
+
+            container.innerHTML = "";
+            const currentHost = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
+            const fullUrl = `${currentHost}/index.html?table=${tableNum}`;
+
+            new QRCode(container, {
+                text: fullUrl,
+                width: 160,
+                height: 160
+            });
+        }
+    </script>
+</body>
+</html>
