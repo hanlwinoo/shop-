@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golden Bite Restaurant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans pb-24">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-40 p-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-bold text-emerald-600">Golden Bite</h1>
+            <p id="table-display" class="text-xs text-gray-500 font-semibold">Table: --</p>
+        </div>
+        <button id="lang-toggle" onclick="toggleLanguage()" class="px-3 py-1 text-sm border rounded-full border-emerald-600 text-emerald-600 font-medium hover:bg-emerald-50">
+            🇲🇲 မြန်မာ
+        </button>
+    </header>
+
+    <!-- Main Container -->
+    <div class="max-w-md mx-auto p-4">
+        <!-- Categories -->
+        <nav class="flex space-x-2 overflow-x-auto pb-4 no-scrollbar" id="category-nav">
+            <button onclick="filterCategory('all')" class="cat-btn px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-full whitespace-nowrap">All / အားလုံး</button>
+            <button onclick="filterCategory('drinks')" class="cat-btn px-4 py-2 bg-white text-gray-600 border text-sm font-medium rounded-full whitespace-nowrap">Drinks / အအေး</button>
+            <button onclick="filterCategory('mains')" class="cat-btn px-4 py-2 bg-white text-gray-600 border text-sm font-medium rounded-full whitespace-nowrap">Mains / ပင်မဟင်းလျာ</button>
+            <button onclick="filterCategory('desserts')" class="cat-btn px-4 py-2 bg-white text-gray-600 border text-sm font-medium rounded-full whitespace-nowrap">Desserts / အချိုပွဲ</button>
+        </nav>
+
+        <!-- Menu List -->
+        <div id="menu-container" class="space-y-4">
+            <p class="text-center text-gray-400 py-8">Loading menu...</p>
+        </div>
+    </div>
+
+    <!-- Floating Order Bar -->
+    <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 flex justify-center z-30">
+        <button onclick="openCheckout()" class="w-full max-w-md bg-emerald-600 text-white font-semibold py-3 px-6 rounded-xl shadow-lg flex justify-between items-center">
+            <span id="basket-count" class="bg-emerald-700 text-xs px-2 py-1 rounded-full">0 items</span>
+            <span id="txt-checkout">View Order / အမှာစာကြည့်ရန်</span>
+            <span id="basket-total" class="font-bold">0 MMK</span>
+        </button>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div id="checkout-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-end z-50">
+        <div class="bg-white w-full max-w-md rounded-t-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-lg font-bold" id="txt-modal-title">Confirm Order</h2>
+                <button onclick="closeCheckout()" class="text-gray-400 text-2xl font-bold">&times;</button>
+            </div>
+
+            <!-- Dining Option -->
+            <div class="mb-4">
+                <label class="block text-sm font-semibold mb-2">Dining Option / သုံးဆောင်မည့်ပုံစံ</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="setOrderType('dine_in')" id="opt-dine" class="py-2 border rounded-lg border-emerald-600 bg-emerald-50 text-emerald-700 font-medium text-sm">Dine-in / ဆိုင်ထိုင်</button>
+                    <button onclick="setOrderType('takeaway')" id="opt-takeaway" class="py-2 border rounded-lg border-gray-200 text-gray-600 font-medium text-sm">Takeaway / ပါဆယ်</button>
+                </div>
+            </div>
+
+            <!-- Payment Option -->
+            <div class="mb-6">
+                <label class="block text-sm font-semibold mb-2">Payment Method / ငွေပေးချေမှုပုံစံ</label>
+                <select id="payment-method" onchange="updatePaymentDetails()" class="w-full p-2.5 border rounded-lg bg-gray-50 text-sm">
+                    <option value="kbz">KBZ Pay</option>
+                    <option value="aya">AYA Pay</option>
+                    <option value="wave">Wave Pay</option>
+                    <option value="cash">Cash / ငွေသား</option>
+                </select>
+                <div id="payment-details" class="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-lg text-xs text-emerald-800">
+                    Loading payment details...
+                </div>
+            </div>
+
+            <button onclick="submitOrder()" id="btn-submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700">
+                Place Order / အမှာစာပို့မည်
+            </button>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-60 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 text-center max-w-sm w-full">
+            <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">❤️</div>
+            <h3 class="text-xl font-bold mb-2 text-gray-800" id="msg-thanks">Thank you so much!</h3>
+            <p class="text-sm text-gray-600 mb-6" id="msg-sub">We are preparing your delicious meal with love. Please relax and enjoy your time!</p>
+            <button onclick="resetApp()" class="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-medium">Done / ခဏစောင့်ဆိုင်းပေးပါ</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrEqMktrCHe31lzEjL3OnGISENiTV9n20",
+            authDomain: "shop-1-fdc21.firebaseapp.com",
+            projectId: "shop-1-fdc21",
+            storageBucket: "shop-1-fdc21.firebasestorage.app",
+            messagingSenderId: "26440829499",
+            appId: "1:26440829499:web:0359e74c163aebfae9ea1e",
+            measurementId: "G-C3FKL0GWLP"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Application State
+        let currentLang = 'en';
+        let cart = [];
+        let orderType = 'dine_in';
+        let rawMenuItems = [];
+        let paymentSettings = {};
+
+        // Parse Table Number from URL query (?table=05)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tableNo = urlParams.get('table') || '01';
+        document.getElementById('table-display').innerText = `Table / စားပွဲ: ${tableNo}`;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchMenu();
+            fetchPaymentSettings();
+        });
+
+        function fetchMenu() {
+            db.collection("menu").onSnapshot(snapshot => {
+                rawMenuItems = [];
+                snapshot.forEach(doc => rawMenuItems.push({ id: doc.id, ...doc.data() }));
+                renderMenu();
+            });
+        }
+
+        function fetchPaymentSettings() {
+            db.collection("settings").doc("payments").onSnapshot(doc => {
+                if (doc.exists) {
+                    paymentSettings = doc.data();
+                    updatePaymentDetails();
+                }
+            });
+        }
+
+        function renderMenu(category = 'all') {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+
+            const filtered = category === 'all' ? rawMenuItems : rawMenuItems.filter(i => i.category === category);
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400 py-8">No menu items found.</p>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const name = currentLang === 'en' ? item.name_en : item.name_mm;
+                const isAvailable = item.is_available !== false;
+
+                container.innerHTML += `
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between ${!isAvailable ? 'opacity-50' : ''}">
+                        <img src="${item.image_url || 'https://via.placeholder.com/100'}" class="w-20 h-20 object-cover rounded-lg">
+                        <div class="flex-1 ml-3">
+                            <h4 class="font-bold text-gray-800 text-sm">${name}</h4>
+                            <p class="text-emerald-600 font-semibold text-xs mt-1">${Number(item.price).toLocaleString()} MMK</p>
+                            ${!isAvailable ? '<span class="text-xs text-red-500 font-bold">Sold Out / ပစ္စည်းကုန်ပါပြီ</span>' : ''}
+                        </div>
+                        ${isAvailable ? `
+                            <button onclick="addToCart('${item.id}')" class="bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white font-bold w-9 h-9 rounded-full flex items-center justify-center transition">
+                                +
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
+            });
+        }
+
+        function addToCart(id) {
+            const item = rawMenuItems.find(i => i.id === id);
+            if (item) {
+                cart.push(item);
+                updateCartUI();
+            }
+        }
+
+        function updateCartUI() {
+            document.getElementById('basket-count').innerText = `${cart.length} items`;
+            const total = cart.reduce((sum, item) => sum + Number(item.price), 0);
+            document.getElementById('basket-total').innerText = `${total.toLocaleString()} MMK`;
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'mm' : 'en';
+            document.getElementById('lang-toggle').innerText = currentLang === 'en' ? '🇲🇲 မြန်မာ' : '🇬🇧 English';
+            renderMenu();
+        }
+
+        function setOrderType(type) {
+            orderType = type;
+            const btnDine = document.getElementById('opt-dine');
+            const btnTake = document.getElementById('opt-takeaway');
+
+            if (type === 'dine_in') {
+                btnDine.className = "py-2 border rounded-lg border-emerald-600 bg-emerald-50 text-emerald-700 font-medium text-sm";
+                btnTake.className = "py-2 border rounded-lg border-gray-200 text-gray-600 font-medium text-sm";
+            } else {
+                btnTake.className = "py-2 border rounded-lg border-emerald-600 bg-emerald-50 text-emerald-700 font-medium text-sm";
+                btnDine.className = "py-2 border rounded-lg border-gray-200 text-gray-600 font-medium text-sm";
+            }
+        }
+
+        function updatePaymentDetails() {
+            const method = document.getElementById('payment-method').value;
+            const detailsDiv = document.getElementById('payment-details');
+            
+            if (method === 'cash') {
+                detailsDiv.innerHTML = "Pay cash directly to our counter or staff / ငွေသားဖြင့် တိုက်ရိုက်ရှင်းလင်းပါ";
+            } else {
+                const accNumber = paymentSettings[method] || "09XXXXXXXXX";
+                detailsDiv.innerHTML = `
+                    <p class="font-bold uppercase">${method} Pay Account:</p>
+                    <p class="text-sm font-semibold text-emerald-900 mt-0.5">${accNumber}</p>
+                    <p class="text-[10px] text-gray-500 mt-1">Please pay total amount and submit order below.</p>
+                `;
+            }
+        }
+
+        function openCheckout() {
+            if (cart.length === 0) return alert('Please add items to cart first.');
+            document.getElementById('checkout-modal').classList.remove('hidden');
+        }
+
+        function closeCheckout() {
+            document.getElementById('checkout-modal').classList.add('hidden');
+        }
+
+        function submitOrder() {
+            const method = document.getElementById('payment-method').value;
+            const totalAmount = cart.reduce((sum, item) => sum + Number(item.price), 0);
+
+            const orderData = {
+                table_number: tableNo,
+                order_type: orderType,
+                payment_method: method,
+                payment_status: method === 'cash' ? 'pending' : 'paid',
+                order_status: 'received',
+                total_amount: totalAmount,
+                items: cart.map(i => ({ name_en: i.name_en, name_mm: i.name_mm, price: i.price })),
+                created_at: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            db.collection("orders").add(orderData).then(() => {
+                closeCheckout();
+                document.getElementById('success-modal').classList.remove('hidden');
+            }).catch(err => alert("Order submission failed: " + err.message));
+        }
+
+        function resetApp() {
+            cart = [];
+            updateCartUI();
+            document.getElementById('success-modal').classList.add('hidden');
+        }
+
+        function filterCategory(cat) {
+            renderMenu(cat);
+        }
+    </script>
+</body>
+</html>
