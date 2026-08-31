@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SF Express - Express Delivery Tracking</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="tracking-page">
+    <div class="bg-overlay"></div>
+    
+    <div class="main-wrapper">
+        <header class="tracking-header">
+            <h1 class="brand-title" id="adminText">SF SHIPPING</h1>
+            <p class="tagline">Global Express & Logistics Tracking</p>
+        </header>
+
+        <main class="tracking-card">
+            <div class="card-body">
+                <form id="trackingForm" onsubmit="return false;">
+                    <div class="input-group">
+                        <label for="trackingNumber"><i class="fas fa-barcode"></i> Tracking Number</label>
+                        <input type="text" id="trackingNumber" class="glass-input" placeholder="e.g. SF1234567890123" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="confirmationCode"><i class="fas fa-key"></i> Confirmation Code</label>
+                        <input type="text" id="confirmationCode" class="glass-input" placeholder="e.g. A1B2" required>
+                    </div>
+
+                    <div class="error-message" id="errorMessage"></div>
+
+                    <button type="button" id="trackButton" class="track-btn">
+                        <i class="fas fa-search"></i> Track Shipment
+                    </button>
+                </form>
+
+                <div id="resultSection" class="result-section" style="display: none;">
+                    <div class="result-header">
+                        <div class="status-title-wrap">
+                            <i class="fas fa-box-check status-icon"></i>
+                            <h3>Shipment Status</h3>
+                        </div>
+                        <span id="displayStatus" class="status-badge">In Transit</span>
+                    </div>
+
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <span class="detail-label"><i class="fas fa-hashtag"></i> Tracking Number</span>
+                            <span id="displayTrackingNumber" class="detail-value highlight-text"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label"><i class="fas fa-shield-alt"></i> Confirmation Code</span>
+                            <span id="displayConfirmationCode" class="detail-value highlight-text"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label"><i class="fas fa-paper-plane"></i> Origin</span>
+                            <span id="displayOrigin" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label"><i class="fas fa-location-dot"></i> Destination</span>
+                            <span id="displayDestination" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label"><i class="fas fa-user"></i> Sender</span>
+                            <span id="displaySenderName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label"><i class="fas fa-user-check"></i> Receiver</span>
+                            <span id="displayReceiverName" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item full-width-item">
+                            <span class="detail-label"><i class="fas fa-map-marked-alt"></i> Delivery Address</span>
+                            <span id="displayReceiverAddress" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item full-width-item">
+                            <span class="detail-label"><i class="fas fa-phone-alt"></i> Receiver Phone</span>
+                            <span id="displayReceiverPhone" class="detail-value"></span>
+                        </div>
+                    </div>
+
+                    <div class="timeline-container">
+                        <div class="timeline-header">
+                            <i class="fas fa-clock-rotate-left"></i>
+                            <h4>Tracking History Progress</h4>
+                        </div>
+                        <div id="trackingTimeline" class="timeline"></div>
+                    </div>
+
+                    <button type="button" id="newSearchButton" class="btn btn-secondary full-width btn-search-again">
+                        <i class="fas fa-arrow-left"></i> Search Another Shipment
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content modal-large login-modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-user-shield"></i> Admin Login Portal</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="loginForm" class="large-modal-form" onsubmit="return false;">
+                    <div class="form-group-large">
+                        <label for="username">
+                            <i class="fas fa-user"></i> Username
+                        </label>
+                        <input type="text" id="username" class="form-control-xl" placeholder="Enter admin username" required>
+                    </div>
+                    <div class="form-group-large">
+                        <label for="password">
+                            <i class="fas fa-lock"></i> Password
+                        </label>
+                        <input type="password" id="password" class="form-control-xl" placeholder="Enter admin password" required>
+                    </div>
+                    <div class="modal-actions-large">
+                        <button type="button" id="loginButton" class="btn btn-primary btn-xl full-width">
+                            <i class="fas fa-sign-in-alt"></i> Login to Portal
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
